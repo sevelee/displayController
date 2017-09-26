@@ -8,20 +8,23 @@ using System.Threading;
 
 public class DisplayController{
     string serialPortName;
-    int length, width;
+    int height, width;
+    int moveHeight, moveWidth;
     int hitterNumber = 6;
     int[,] lastPicture;
     int[,] picture;
     public SerialPort myPort;
     bool getResponse;
 
+    int nowX, nowY;
+
     //
     Thread receiveThread;
     Thread sendThread;
 
-    public int Length
+    public int Height
     { 
-        get { return length; }
+        get { return height; }
     }
 
     public int Width
@@ -52,6 +55,38 @@ public class DisplayController{
         {
             Debug.Log("port opened.");
         }
+
+        width = 120;
+        height = 60;
+
+        lastPicture = new int[width, height];
+        picture = new int[width, height];
+        moveWidth = width / 6;
+        moveHeight = height / 4;
+        nowX = nowY = 0;
+    }
+
+    public void Init(string SerialPortName, int speed, int _width, int _height)
+    {
+        serialPortName = SerialPortName;
+        myPort = new SerialPort(serialPortName, speed, Parity.None, 8, StopBits.One);
+        myPort.ReadTimeout = 1000;
+        myPort.Open();
+        getResponse = true;
+
+        if (myPort.IsOpen)
+        {
+            Debug.Log("port opened.");
+        }
+
+        width = _width;
+        height = _height;
+
+        lastPicture = new int[width, height];
+        picture = new int[width, height];
+        moveWidth = width / 6 / 2;
+        moveHeight = height / 4;
+        nowX = nowY = 0;
     }
 
     /// <summary>
@@ -61,6 +96,8 @@ public class DisplayController{
     /// <param name="y"></param>
     public void sendMove(int x, int y)
     {
+        nowX += x;
+        nowY += y;
         Thread rThread;
         // 如果上一次通讯得到了回复（即，arduino完成了动作），再发送这次动作。
         if (getResponse)
@@ -119,22 +156,152 @@ public class DisplayController{
     }
 
     /// <summary>
-    /// 设置显示大小
+    /// 输入一个数组，输出一个编码后的int 
     /// </summary>
-    /// <param length="x"></param>
-    /// <param width="y"></param>
-    public void SetSize(int x, int y)
+    /// <param name="data"></param>
+    private int convertData(int[] data)
     {
-        length = x;
-        width = y;
+        int _result = 0;
+        for (int i = 0; i < data.Length; i++)
+        {
+            if (data[i] > 0)
+            {
+                _result |= (1 << i);
+            }
+        }
+        return _result;
     }
 
-    /// <summary>
-    /// 将hitter的数据压缩一下
-    /// </summary>
-    void convertData (int[,] data)
+    public void UpdataPicture()
     {
+        stupidUpdate();
+    }
 
-        return;
+    private void stupidUpdate()
+    {
+        // -1左面, 1右面
+        int positionFlag = -1;
+        for (int i = 0; i < moveHeight; i++)
+        {
+            // 如果不是第一行的话，先向下移动4格
+            if (i > 0)
+            {
+                sendMove(0, 4);
+            }
+            int startH = i * 4;
+            int[,] xorData;
+            xorData = new int[width, 4];
+            bool needMoveAndHit = false;
+            for (int j = 0; j < width; j++)
+            {
+                for (int k = 0; k < 4; k++)
+                {
+                    xorData[j, k] = lastPicture[j, startH + k] ^ picture[j, startH + k];
+                    if (xorData[j,k] > 0)
+                    {
+                        needMoveAndHit = true;
+                    }
+                }
+            }
+            if (needMoveAndHit)
+            {
+                if (positionFlag == -1)
+                {
+                    int lastX = 0;
+                    int nowX = 0;
+                    bool needMoveX = false;
+                    for (int j = 0; j < moveWidth; j++)
+                    {
+                        int[][] oriData;
+                        oriData = new int[hitterNumber][];
+                        for (int k = 0; k < hitterNumber; k++)
+                        {
+                            oriData[k] = new int[8];
+                        }
+                        needMoveX = false;
+                        for (int k = 0; k < hitterNumber; k++)
+                        {
+                            for (int _i = 0; _i < 4; _i++)
+                            {
+                                oriData[k][_i] = xorData[j * 2, _i];
+                                needMoveX |= (oriData[k][_i] == 1);
+                            }
+                            for (int _i = 0; _i < 4; _i++)
+                            {
+                                oriData[k][_i + 4] = xorData[j * 2 + 1, _i];
+                                needMoveX |= (oriData[k][_i + 4] == 1);
+                            }
+                        }
+                        if (needMoveX)
+                        {
+                            nowX = j * 2;
+                            sendMove(nowX - lastX, 0);
+                            int[] _sendData;
+                            _sendData = new int[hitterNumber];
+                            for (int k = 0; k < hitterNumber; k++)
+                            {
+                                _sendData[k] = convertData(oriData[k]);
+                            }
+                            sendData(_sendData);
+                        }
+                    }
+                    sendMove(width / hitterNumber - 1 - nowX, 0);
+                    positionFlag = 1;
+                }
+                else if (positionFlag == 1)
+                {
+                    int lastX = width / hitterNumber - 1;
+                    int nowX = lastX;
+                    bool needMoveX = false;
+                    for (int j = moveWidth - 1; j >= 0; j--)
+                    {
+                        int[][] oriData;
+                        oriData = new int[hitterNumber][];
+                        for (int k = 0; k < hitterNumber; k++)
+                        {
+                            oriData[k] = new int[8];
+                        }
+                        needMoveX = false;
+                        for (int k = 0; k < hitterNumber; k++)
+                        {
+                            for (int _i = 0; _i < 4; _i++)
+                            {
+                                oriData[k][_i] = xorData[j * 2, _i];
+                                needMoveX |= (oriData[k][_i] == 1);
+                            }
+                            for (int _i = 0; _i < 4; _i++)
+                            {
+                                oriData[k][_i + 4] = xorData[j * 2 + 1, _i];
+                                needMoveX |= (oriData[k][_i + 4] == 1);
+                            }
+                        }
+                        if (needMoveX)
+                        {
+                            nowX = j * 2;
+                            sendMove(nowX - lastX, 0);
+                            int[] _sendData;
+                            _sendData = new int[hitterNumber];
+                            for (int k = 0; k < hitterNumber; k++)
+                            {
+                                _sendData[k] = convertData(oriData[k]);
+                            }
+                            sendData(_sendData);
+                        }
+                    }
+                    sendMove(0 - nowX, 0);
+                    positionFlag = -1;
+                }
+            }
+        }
+
+        //复原到0,0
+        if (positionFlag == 1)
+        {
+            sendMove(-(width / hitterNumber - 1), -(height - 4));
+        }
+        else
+        {
+            sendMove(0, - (height - 4));
+        }
     }
 }

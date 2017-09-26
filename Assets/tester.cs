@@ -15,7 +15,7 @@ public class tester : MonoBehaviour {
             Debug.Log(portList[i]);
         }
 
-        myController.Init("COM8", 115200);
+        myController.Init("COM3", 115200);
 	}
 	
 	// Update is called once per frame
