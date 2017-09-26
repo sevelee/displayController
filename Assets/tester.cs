@@ -5,6 +5,7 @@ using System.IO.Ports;
 
 public class tester : MonoBehaviour {
     DisplayController myController;
+    bool[][] values;
 
 	// Use this for initialization
 	void Start () {
@@ -15,7 +16,13 @@ public class tester : MonoBehaviour {
             Debug.Log(portList[i]);
         }
 
-        myController.Init("COM3", 115200);
+        myController.Init("COM8", 115200);
+
+        values = new bool[myController.HitterNumber][];
+        for (int i = 0; i < myController.HitterNumber; i++)
+        {
+            values[i] = new bool[8];
+        }
 	}
 	
 	// Update is called once per frame
@@ -52,6 +59,27 @@ public class tester : MonoBehaviour {
         if (GUI.Button(new Rect(60, 200, 50, 50), "down"))
         {
             myController.sendMove(0, 1);
+        }
+
+        int hitterStartX = 50;
+        int hitterStartY = 300;
+
+        for (int i = 0; i < myController.HitterNumber; i++)
+        {
+            int startX = hitterStartX + i * 100;
+            for (int j = 0; j < 4; j++)
+            {
+                values[i][j] = GUI.Toggle(new Rect(startX, hitterStartY + j * 20, 20, 20), values[i][j], "");
+            }
+            for (int j = 0; j < 4; j++)
+            {
+                values[i][j + 4] = GUI.Toggle(new Rect(startX + 20, hitterStartY + j * 20, 20, 20), values[i][j + 4], "");
+            }
+        }
+
+        if (GUI.Button(new Rect(hitterStartX, hitterStartY + 100, 150, 20), "发送电磁铁测试数据"))
+        {
+            myController.sendDebugData(values);
         }
     }
 }

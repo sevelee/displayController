@@ -22,6 +22,11 @@ public class DisplayController{
     Thread receiveThread;
     Thread sendThread;
 
+    public int HitterNumber
+    {
+        get { return hitterNumber; }
+    }
+
     public int Height
     { 
         get { return height; }
@@ -130,6 +135,33 @@ public class DisplayController{
             rThread.IsBackground = true;
             rThread.Start();
         }
+    }
+
+    /// <summary>
+    /// 输入一个bool型的数组，然后发送到硬件
+    /// </summary>
+    /// <param name="values"></param>
+    public void sendDebugData(bool[][] values)
+    {
+        int[] sData = new int[hitterNumber];
+        for (int i = 0; i < hitterNumber; i++)
+        {
+            int[] OriData;
+            OriData = new int[8];
+            for (int j = 0; j < 8; j++)
+            {
+                if (values[i][j])
+                {
+                    OriData[j] = 1;
+                }
+                else
+                {
+                    OriData[j] = 0;
+                }
+            }
+            sData[i] = convertData(OriData);
+        }
+        sendData(sData);
     }
 
     /// <summary>
