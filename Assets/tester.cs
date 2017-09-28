@@ -6,6 +6,7 @@ using System.IO.Ports;
 public class tester : MonoBehaviour {
     DisplayController myController;
     bool[][] values;
+    public string COMName = "";
 
 	// Use this for initialization
 	void Start () {
@@ -16,7 +17,7 @@ public class tester : MonoBehaviour {
             Debug.Log(portList[i]);
         }
 
-        myController.Init("COM8", 115200);
+        myController.Init(COMName, 115200);
 
         values = new bool[myController.HitterNumber][];
         for (int i = 0; i < myController.HitterNumber; i++)
