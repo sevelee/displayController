@@ -95,7 +95,7 @@ public class DisplayController{
     }
 
     /// <summary>
-    /// 发送移动位（相对），回头改成pravate
+    /// 发送移动位（相对），回头改成pravate。最终和单片机通讯的一个函数。
     /// </summary>
     /// <param name="x"></param>
     /// <param name="y"></param>
@@ -116,7 +116,7 @@ public class DisplayController{
     }
 
     /// <summary>
-    /// 发送一组sData
+    /// 发送一组sData,sData是已经压缩后的data。最终和单片机通讯的一个函数。
     /// </summary>
     /// <param name="sData"></param>
     public void sendData(int[] sData)
@@ -188,17 +188,18 @@ public class DisplayController{
     }
 
     /// <summary>
-    /// 输入一个数组，输出一个编码后的int 
+    /// 输入一个数组，输出一个编码后的int。本类内部使用。
     /// </summary>
     /// <param name="data"></param>
     private int convertData(int[] data)
     {
         int _result = 0;
-        for (int i = 0; i < data.Length; i++)
+        //这里需要倒叙一下，arduino里面写反了。不想改了。 by Seve. 2017/11/01
+        for (int i = data.Length - 1; i >= 0; i--)
         {
             if (data[i] > 0)
             {
-                _result |= (1 << i);
+                _result |= (1 << (data.Length - i - 1));
             }
         }
         return _result;
